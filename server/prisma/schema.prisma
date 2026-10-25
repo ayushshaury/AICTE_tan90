@@ -1,0 +1,462 @@
+// Prisma schema for AICTE VerifyAI
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  APPLICANT
+  OFFICER
+  SENIOR_REVIEWER
+  ADMIN
+  DEMO_VIEWER
+}
+
+enum ApplicationCategory {
+  EOA                     // Extension of Approval
+  NEW_PROGRAMME           // New Programme / Course
+  INTAKE_CHANGE           // Increase / Variation in Intake
+  INSTITUTION_DETAIL_CHANGE // Change of Site / Name / Society
+  OTHER
+}
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  PROCESSING
+  UNDER_SCRUTINY
+  ACTION_REQUIRED
+  RESUBMITTED
+  ESCALATED
+  COMPLETED_IN_PROTOTYPE
+}
+
+enum DocumentCategory {
+  AFFIDAVIT
+  ACCREDITATION_CERTIFICATE
+  NOC_LAND_USE
+  FACULTY_LIST_EVIDENCE
+  INFRASTRUCTURE_PLAN
+  PREVIOUS_EOA
+  TER_FEE_RECEIPT
+  FIRE_SAFETY_CERTIFICATE
+  BUILDING_STABILITY_CERTIFICATE
+  OTHER_SUPPORTING
+}
+
+enum ProcessingStatus {
+  NOT_REQUESTED
+  QUEUED
+  PROCESSING
+  SUCCEEDED
+  PARTIAL
+  FAILED
+  REQUIRES_REVIEW
+}
+
+enum VerificationStatus {
+  NOT_REQUESTED
+  PENDING
+  VERIFIED
+  MISMATCH
+  EXPIRED
+  SOURCE_UNAVAILABLE
+  MANUAL_REVIEW_REQUIRED
+  SIMULATED
+}
+
+enum ReviewStatus {
+  PENDING
+  ACCEPTED
+  FLAGGED
+  REJECTED
+  MODIFIED
+}
+
+enum Severity {
+  INFO
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum FindingStatus {
+  OPEN
+  UNDER_REVIEW
+  CONFIRMED
+  DISMISSED
+  RESOLVED
+  NEEDS_MORE_EVIDENCE
+}
+
+enum ProviderMode {
+  MOCK
+  FASTAPI
+  AUTHORIZED_SOURCE
+}
+
+enum RunType {
+  AUTOMATIC
+  MANUAL
+  RESUBMISSION
+}
+
+enum FieldSource {
+  AI
+  MANUAL
+}
+
+model User {
+  id            String       @id @default(uuid())
+  name          String
+  email         String       @unique
+  passwordHash  String
+  role          Role         @default(APPLICANT)
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: SetNull)
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  createdApplications  Application[]        @relation("CreatedApplications")
+  assignedApplications Application[]        @relation("AssignedApplications")
+  uploadedDocuments    Document[]           @relation("UploadedDocuments")
+  reviewedFields       ExtractedField[]     @relation("ReviewedFields")
+  reviewedFindings     Finding[]            @relation("ReviewedFindings")
+  sourceVerifications  SourceVerification[] @relation("CreatedVerifications")
+  notifications        Notification[]
+  auditEvents          AuditEvent[]         @relation("ActorAuditEvents")
+  createdRules         ValidationRule[]     @relation("CreatedRules")
+  triggeredRuns        ValidationRun[]      @relation("TriggeredValidationRuns")
+  reviewedVerificationItems VerificationItem[] @relation("ReviewedVerificationItems")
+  sentClarifications   ClarificationRequest[] @relation("SentClarifications")
+
+  @@index([email])
+  @@index([role])
+}
+
+model Institution {
+  id              String   @id @default(uuid())
+  institutionCode String   @unique // Synthetic code, e.g. "AICTE-DEMO-01"
+  name            String
+  institutionType String   // e.g. "Engineering & Technology", "Management", "Polytechnic"
+  address         String
+  state           String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  users        User[]
+  applications Application[]
+
+  @@index([institutionCode])
+  @@index([name])
+}
+
+model Application {
+  id                String              @id @default(uuid())
+  referenceNumber   String              @unique // e.g. "APP-2026-001"
+  institutionId     String
+  institution       Institution         @relation(fields: [institutionId], references: [id], onDelete: Cascade)
+  createdById       String
+  createdBy         User                @relation("CreatedApplications", fields: [createdById], references: [id])
+  assignedOfficerId String?
+  assignedOfficer   User?               @relation("AssignedApplications", fields: [assignedOfficerId], references: [id], onDelete: SetNull)
+  category          ApplicationCategory @default(EOA)
+  academicYear      String              @default("2026-2027")
+  status            ApplicationStatus   @default(DRAFT)
+  submissionNotes   String?
+  submittedAt       DateTime?
+  previousApplicationId String?
+  previousApplication   Application?        @relation("ApplicationHierarchy", fields: [previousApplicationId], references: [id], onDelete: SetNull)
+  nextApplications      Application[]       @relation("ApplicationHierarchy")
+  previousEoaReference  String?
+  previousAcademicYear  String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+
+  documents           Document[]
+  validationRuns      ValidationRun[]
+  findings            Finding[]
+  sourceVerifications SourceVerification[]
+  verificationItems   VerificationItem[]
+  clarificationRequests ClarificationRequest[]
+
+  @@index([institutionId])
+  @@index([status])
+  @@index([referenceNumber])
+  @@index([assignedOfficerId])
+}
+
+model Document {
+  id                 String             @id @default(uuid())
+  applicationId      String
+  application        Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  uploadedById       String
+  uploadedBy         User               @relation("UploadedDocuments", fields: [uploadedById], references: [id])
+  originalFilename   String
+  storageKey         String             // e.g. "uuid-hash.pdf" stored in private storage
+  mimeType           String
+  sizeBytes          Int
+  sha256             String             // SHA-256 for exact duplicate detection
+  category           DocumentCategory
+  processingStatus   ProcessingStatus   @default(NOT_REQUESTED)
+  verificationStatus VerificationStatus @default(NOT_REQUESTED)
+  reviewStatus       ReviewStatus       @default(PENDING)
+  pageCount          Int?
+  languageHint       String?            @default("en")
+  ocrRawText         String?
+  ocrConfidence      Float?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  deletedAt          DateTime?          // Soft delete for audited preservation
+
+  processingJobs      ProcessingJob[]
+  extractedFields     ExtractedField[]
+  findings            Finding[]
+  sourceVerifications SourceVerification[]
+  verificationItems   VerificationItem[]
+
+  @@index([applicationId])
+  @@index([sha256])
+  @@index([category])
+  @@index([processingStatus])
+}
+
+model ProcessingJob {
+  id               String           @id @default(uuid())
+  documentId       String
+  document         Document         @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  requestId        String           // UUID for correlation
+  providerMode     ProviderMode     @default(MOCK)
+  status           ProcessingStatus @default(QUEUED)
+  startedAt        DateTime?
+  finishedAt       DateTime?
+  durationMs       Int?
+  errorCode        String?
+  safeErrorMessage String?
+  createdAt        DateTime         @default(now())
+
+  @@index([documentId])
+  @@index([requestId])
+}
+
+model ExtractedField {
+  id              String       @id @default(uuid())
+  documentId      String
+  document        Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  fieldName       String
+  valueText       String?
+  normalizedValue String?
+  confidence      Float?
+  pageNumber      Int?
+  evidenceText    String?
+  boundingBoxJson Json?
+  source          FieldSource  @default(AI)
+  reviewStatus    ReviewStatus @default(PENDING)
+  reviewedById    String?
+  reviewedBy      User?        @relation("ReviewedFields", fields: [reviewedById], references: [id], onDelete: SetNull)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@index([documentId])
+  @@index([fieldName])
+}
+
+model ValidationRule {
+  id                    String   @id @default(uuid())
+  ruleCode              String   @unique // e.g. "RULE_REQ_DOC_AFFIDAVIT"
+  name                  String
+  description           String
+  applicationCategories Json     // Array of applicable categories, or ["ALL"]
+  severity              Severity @default(HIGH)
+  version               Int      @default(1)
+  enabled               Boolean  @default(true)
+  configurationJson     Json     // Dynamic parameters
+  remediationText       String
+  createdById           String?
+  createdBy             User?    @relation("CreatedRules", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  findings Finding[]
+
+  @@index([ruleCode])
+  @@index([enabled])
+}
+
+model ValidationRun {
+  id              String    @id @default(uuid())
+  applicationId   String
+  application     Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  triggeredById   String?
+  triggeredBy     User?     @relation("TriggeredValidationRuns", fields: [triggeredById], references: [id], onDelete: SetNull)
+  runType         RunType   @default(AUTOMATIC)
+  status          String    @default("COMPLETED")
+  startedAt       DateTime  @default(now())
+  finishedAt      DateTime?
+  ruleSetVersion  String    @default("1.0.0")
+  summaryJson     Json?
+  createdAt       DateTime  @default(now())
+
+  findings Finding[]
+
+  @@index([applicationId])
+}
+
+model Finding {
+  id                String         @id @default(uuid())
+  applicationId     String
+  application       Application    @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  documentId        String?
+  document          Document?      @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  validationRunId   String?
+  validationRun     ValidationRun? @relation(fields: [validationRunId], references: [id], onDelete: SetNull)
+  ruleId            String?
+  rule              ValidationRule? @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  findingCode       String
+  title             String
+  description       String
+  severity          Severity       @default(MEDIUM)
+  status            FindingStatus  @default(OPEN)
+  evidenceJson      Json?          // { pageNumber, excerpt, fieldName, value }
+  confidence        Float?
+  recommendedAction String
+  reviewerId        String?
+  reviewer          User?          @relation("ReviewedFindings", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewReason      String?        // Required when dismissing or overriding
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  resolvedAt        DateTime?
+
+  @@index([applicationId])
+  @@index([documentId])
+  @@index([severity])
+  @@index([status])
+  @@index([findingCode])
+}
+
+model SourceVerification {
+  id                 String             @id @default(uuid())
+  applicationId      String
+  application        Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  documentId         String
+  document           Document           @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  issuerName         String             // e.g. "State Higher Education Dept", "Affiliating University"
+  verificationMethod String             // "DIGITAL_PORTAL", "MANUAL_SCRUTINY", "QR_CODE"
+  referenceNumber    String?
+  status             VerificationStatus @default(SIMULATED)
+  requestTimestamp   DateTime?          @default(now())
+  responseTimestamp  DateTime?
+  submittedDataJson  Json
+  returnedDataJson   Json?
+  resultSummary      String?
+  providerMode       ProviderMode       @default(MOCK)
+  createdById        String
+  createdBy          User               @relation("CreatedVerifications", fields: [createdById], references: [id])
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  @@index([applicationId])
+  @@index([documentId])
+  @@index([status])
+}
+
+model AuditEvent {
+  id          String   @id @default(uuid())
+  actorId     String?
+  actor       User?    @relation("ActorAuditEvents", fields: [actorId], references: [id], onDelete: SetNull)
+  action      String   // e.g. "APPLICATION_SUBMIT", "FINDING_DISMISSED", "DOCUMENT_UPLOAD"
+  entityType  String   // e.g. "Application", "Document", "Finding"
+  entityId    String
+  requestId   String?
+  metadataJson Json?
+  createdAt   DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+}
+
+model Notification {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       String    // e.g. "HIGH_PRIORITY_FINDING", "CORRECTION_REQUESTED"
+  title      String
+  message    String
+  readAt     DateTime?
+  entityType String?
+  entityId   String?
+  createdAt  DateTime  @default(now())
+
+  @@index([userId])
+  @@index([readAt])
+}
+
+model VerificationItem {
+  id                      String       @id @default(uuid())
+  applicationId           String
+  application             Application  @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  documentId              String?
+  document                Document?    @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  category                String       // e.g. "INSTITUTE_IDENTITY", "PROGRAMME_INTAKE", "INFRASTRUCTURE", "REGULATORY_CERTIFICATE", "FACULTY", "STATUTORY_DECLARATION"
+  fieldRequirement        String       // e.g. "Institution Legal Name", "Total Approved Intake", "Fire Safety NOC Validity"
+  fieldName               String       // e.g. "institution_name", "total_intake", "fire_noc_validity"
+  extractedValue          String?
+  normalizedValue         String?
+  previousEoaValue        String?
+  currentApplicationValue String?
+  comparisonResult        String       // "CONSISTENT", "CHANGED_VERIFY", "NEW_ADDITION", "REMOVED_VERIFY", "INCONSISTENT_VERIFY", "POTENTIALLY_EXPIRED", "UNABLE_TO_EXTRACT", "NOT_APPLICABLE", "NO_PREVIOUS_RECORD"
+  warningReason           String?
+  recommendedAction       String?
+  pageNumber              Int?
+  evidenceSnippet         String?
+  boundingBoxJson         Json?
+  confidence              Float?
+  conditionType           String       @default("DOCUMENT_PRESENT") // "DOCUMENT_ABSENT", "FIELD_ABSENT", "OCR_UNRELIABLE", "NOT_APPLICABLE", "DOCUMENT_PRESENT"
+  reviewStatus            String       @default("PENDING_REVIEW")   // "PENDING_REVIEW", "CONSISTENT", "CHANGED_VERIFY", "MISSING_VERIFY", "INCONSISTENT_VERIFY", "POTENTIALLY_EXPIRED", "UNABLE_TO_EXTRACT", "VERIFIED_BY_OFFICER", "CLARIFICATION_REQUESTED", "RESOLVED"
+  officerComments         String?
+  reviewedById            String?
+  reviewedBy              User?        @relation("ReviewedVerificationItems", fields: [reviewedById], references: [id], onDelete: SetNull)
+  reviewedAt              DateTime?
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+
+  clarificationRequests   ClarificationRequest[]
+
+  @@index([applicationId])
+  @@index([documentId])
+  @@index([reviewStatus])
+  @@index([comparisonResult])
+  @@index([category])
+}
+
+model ClarificationRequest {
+  id                  String            @id @default(uuid())
+  applicationId       String
+  application         Application       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  verificationItemId  String?
+  verificationItem    VerificationItem? @relation(fields: [verificationItemId], references: [id], onDelete: SetNull)
+  requestedById       String
+  requestedBy         User              @relation("SentClarifications", fields: [requestedById], references: [id])
+  subject             String
+  queryText           String
+  deadline            DateTime?
+  status              String            @default("OPEN") // "OPEN", "RESPONDED", "RESOLVED", "CLOSED"
+  responseNotes       String?
+  responseDocumentId  String?
+  respondedAt         DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+
+  @@index([applicationId])
+  @@index([status])
+}
+
