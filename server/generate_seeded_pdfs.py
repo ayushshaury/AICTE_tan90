@@ -1,6 +1,6 @@
 import sys
 import os
-import fitz # PyMuPDF
+import fitz 
 
 upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'private-uploads'))
 os.makedirs(upload_dir, exist_ok=True)
@@ -9,17 +9,15 @@ def create_aicte_pdf(filepath, title, header_lines, body_paragraphs, table_data=
     doc = fitz.open()
     page = doc.new_page(width=595, height=842) # A4
 
-    # Top Government Header Bar
-    # Header rectangle
+   
     rect = fitz.Rect(30, 25, 565, 95)
     page.draw_rect(rect, color=(0, 0.13, 0.28), fill=(0.95, 0.97, 1.0), width=1.5)
 
-    # Emblem and Header text
+  
     page.insert_text(fitz.Point(45, 50), "ALL INDIA COUNCIL FOR TECHNICAL EDUCATION", fontsize=13, fontname="helv", fontfile=None, color=(0, 0.13, 0.28))
     page.insert_text(fitz.Point(45, 68), "(A STATUTORY BODY UNDER MINISTRY OF EDUCATION, GOVT. OF INDIA)", fontsize=8, fontname="helv", color=(0.4, 0.4, 0.4))
     page.insert_text(fitz.Point(45, 84), "Nelson Mandela Marg, Vasant Kunj, New Delhi-110070 | https://aicte-india.org", fontsize=8, fontname="helv", color=(0.2, 0.2, 0.2))
 
-    # Title
     page.insert_text(fitz.Point(35, 125), title.upper(), fontsize=12, fontname="helv", color=(0.8, 0.2, 0))
     page.draw_line(fitz.Point(35, 132), fitz.Point(560, 132), color=(0.8, 0.2, 0), width=1)
 
@@ -37,7 +35,7 @@ def create_aicte_pdf(filepath, title, header_lines, body_paragraphs, table_data=
 
     if table_data:
         y += 10
-        # Draw table header
+       
         cols = [40, 100, 320, 420, 520]
         header_row = ["Sr.", "Programme / Course", "Level", "Intake", "Status"]
         page.draw_rect(fitz.Rect(40, y, 555, y + 22), color=(0, 0.13, 0.28), fill=(0, 0.13, 0.28))
@@ -52,7 +50,7 @@ def create_aicte_pdf(filepath, title, header_lines, body_paragraphs, table_data=
                 page.insert_text(fitz.Point(cols[c_idx] + 5, y + 14), str(val), fontsize=8, fontname="helv", color=(0.1, 0.1, 0.1))
             y += 20
 
-    # Official Seal & Signature at Bottom
+  
     y_seal = max(y + 35, 710)
     page.draw_rect(fitz.Rect(380, y_seal, 550, y_seal + 80), color=(0.6, 0.6, 0.6), width=1)
     page.insert_text(fitz.Point(390, y_seal + 20), "Digitally Signed & Certified", fontsize=8.5, fontname="helv", color=(0, 0.5, 0.2))
@@ -60,7 +58,7 @@ def create_aicte_pdf(filepath, title, header_lines, body_paragraphs, table_data=
     page.insert_text(fitz.Point(390, y_seal + 54), "AICTE Western Regional Office", fontsize=7.5, fontname="helv", color=(0.4, 0.4, 0.4))
     page.insert_text(fitz.Point(390, y_seal + 70), "Date: Certified Electronic Docket", fontsize=7.5, fontname="helv", color=(0.4, 0.4, 0.4))
 
-    # Footer
+
     page.draw_line(fitz.Point(30, 805), fitz.Point(565, 805), color=(0.8, 0.8, 0.8), width=0.5)
     page.insert_text(fitz.Point(40, 820), "AICTE VerifyAI Regulatory Audit Docket — AICTE Approval Process Handbook (APH 2026-27)", fontsize=7, fontname="helv", color=(0.5, 0.5, 0.5))
     page.insert_text(fitz.Point(480, 820), "Page 1 of 1", fontsize=7, fontname="helv", color=(0.5, 0.5, 0.5))
@@ -69,7 +67,6 @@ def create_aicte_pdf(filepath, title, header_lines, body_paragraphs, table_data=
     doc.close()
     print(f"Generated PDF: {filepath}")
 
-# 1. Previous EoA Approval Order (2025-26)
 create_aicte_pdf(
     os.path.join(upload_dir, "synthetic_apex_eoa_order_2025.pdf"),
     "Extension of Approval (EoA) Order — Academic Year 2025-2026",
@@ -95,7 +92,6 @@ create_aicte_pdf(
     ]
 )
 
-# 2. Fire Safety Certificate
 create_aicte_pdf(
     os.path.join(upload_dir, "synthetic_apex_fire_safety.pdf"),
     "Fire Safety Compliance Certificate & No Objection Certificate (NOC)",
@@ -115,7 +111,7 @@ create_aicte_pdf(
     ]
 )
 
-# 3. Previous EoA Copy
+
 create_aicte_pdf(
     os.path.join(upload_dir, "synthetic_apex_eoa_2025.pdf"),
     "Official Extension of Approval Order — Academic Year 2025-26 (Copy)",
@@ -137,7 +133,6 @@ create_aicte_pdf(
     ]
 )
 
-# 4. Saraswati Affidavit
 create_aicte_pdf(
     os.path.join(upload_dir, "synthetic_saraswati_affidavit.pdf"),
     "AICTE Undertaking & Regulatory Affidavit — Session 2026-27",
@@ -153,7 +148,6 @@ create_aicte_pdf(
     ]
 )
 
-# 5. Saraswati Land NOC
 create_aicte_pdf(
     os.path.join(upload_dir, "synthetic_saraswati_land_noc.pdf"),
     "Land Title, Possession & Municipal NOC Certificate",
