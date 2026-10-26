@@ -12,7 +12,7 @@ What this service does:
 - FastAPI endpoints for health and document analysis
 
 Important limitations:
-- This is a prototype screening aid, not a forgery detector.
+
 - OCR output and visual heuristics do not prove authenticity.
 - Issuer verification must be performed through authorized issuing-authority systems.
 - Findings are advisory and must be reviewed by a competent human.
@@ -51,20 +51,15 @@ try:
 except ImportError:
     pass
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
+
 
 APP_NAME = "AICTE VerifyAI AI Service"
 APP_VERSION = "0.1.0"
 
-# Set VERIFYAI_API_TOKEN to a long random secret in the environment.
-# For local-only development, the token can be left empty. For any exposed
-# deployment, configure a token and use HTTPS/reverse-proxy protections.
+
 API_TOKEN = os.getenv("VERIFYAI_API_TOKEN", "").strip()
 
-# PaddleOCR language code. "en" is the default. Do not assume multilingual
-# performance without installing/configuring appropriate models and testing.
+
 OCR_LANG = os.getenv("VERIFYAI_OCR_LANG", "en").strip() or "en"
 
 MAX_UPLOAD_MB = int(os.getenv("VERIFYAI_MAX_UPLOAD_MB", "20"))
@@ -100,8 +95,7 @@ app = FastAPI(
     ),
 )
 
-# Exact hashes seen since process start. Use persistent database storage for
-# production deployments and multi-worker deployments.
+
 _seen_hashes: dict[str, dict[str, Any]] = {}
 _seen_hashes_lock = threading.Lock()
 
@@ -109,9 +103,6 @@ _ocr_engine = None
 _ocr_lock = threading.Lock()
 
 
-# ---------------------------------------------------------------------------
-# API response schemas
-# ---------------------------------------------------------------------------
 
 class Finding(BaseModel):
     code: str
@@ -138,10 +129,6 @@ class DocumentAnalysisResponse(BaseModel):
     )
 
 
-# ---------------------------------------------------------------------------
-# Model initialization
-# ---------------------------------------------------------------------------
-
 def get_ocr_engine():
     """
     Lazily load PaddleOCR once. This avoids downloading/loading the model
@@ -164,7 +151,7 @@ def get_ocr_engine():
 
         logger.info("Loading PaddleOCR model (lang=%s)...", OCR_LANG)
         try:
-            # PaddleOCR 2.10.x API. The first run may download model weights.
+            
             _ocr_engine = PaddleOCR(
                 use_angle_cls=OCR_USE_ANGLE_CLS,
                 lang=OCR_LANG,
@@ -177,9 +164,7 @@ def get_ocr_engine():
             raise RuntimeError(f"PaddleOCR model initialization failed: {exc}") from exc
 
 
-# ---------------------------------------------------------------------------
-# File handling and OCR
-# ---------------------------------------------------------------------------
+
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
@@ -233,7 +218,7 @@ def pdf_to_images(data: bytes) -> tuple[list[np.ndarray], int, dict[str, Any]]:
                     status_code=400,
                     detail="Encrypted PDFs are not supported. Upload an authorized readable copy.",
                 )
-            # 1.7x gives readable OCR input without an excessive memory increase.
+           
             matrix = fitz.Matrix(1.7, 1.7)
             for page in pdf:
                 page_text = page.get_text()
@@ -304,7 +289,7 @@ def run_ocr_on_images(images: list[np.ndarray]) -> tuple[str, list[dict[str, Any
     all_details: list[dict[str, Any]] = []
 
     for page_index, image_array in enumerate(images, start=1):
-        # PaddleOCR 2.x expects a numpy image in BGR order for best compatibility.
+       
         bgr = image_array[:, :, ::-1].copy()
         try:
             raw = engine.ocr(bgr, cls=OCR_USE_ANGLE_CLS)
@@ -322,9 +307,7 @@ def run_ocr_on_images(images: list[np.ndarray]) -> tuple[str, list[dict[str, Any
     return "\n\n".join(all_lines).strip(), all_details
 
 
-# ---------------------------------------------------------------------------
-# Classification and field extraction (transparent, rule-based baseline)
-# ---------------------------------------------------------------------------
+
 
 DOCUMENT_KEYWORDS: dict[str, list[str]] = {
     "registration_certificate": [
@@ -367,7 +350,7 @@ def classify_document(text: str) -> tuple[str, float]:
     label, score = max(scores, key=lambda item: item[1])
     if score <= 0:
         return "unknown", 0.0
-    # This is a keyword-match score, not a calibrated ML confidence.
+    
     confidence = min(0.95, 0.35 + score * 0.12)
     return label, round(confidence, 3)
 
@@ -415,7 +398,7 @@ def extract_fields(text: str) -> dict[str, Any]:
     for match in ID_LABEL_RE.finditer(text):
         ids.append({"label": match.group(1).strip(), "value": match.group(2).strip(" .,:;")})
 
-    # Conservative name-like extraction: return the line as a candidate only.
+    
     name_candidates = []
     for line in lines[:80]:
         lower = line.lower()
@@ -433,9 +416,7 @@ def extract_fields(text: str) -> dict[str, Any]:
     }
 
 
-# ---------------------------------------------------------------------------
-# Advisory checks and evidence-linked findings
-# ---------------------------------------------------------------------------
+
 
 def add_finding(
     findings: list[Finding],
@@ -462,7 +443,7 @@ def check_expiry_and_dates(text: str, fields: dict[str, Any], findings: list[Fin
     expiry_context_present = any(term in lower for term in expiry_terms)
 
     if expiry_context_present:
-        # Inspect each line with an expiry phrase and parse date-like strings on that line.
+       
         for line in text.splitlines():
             if any(term in line.lower() for term in expiry_terms):
                 dates = extract_dates(line)
@@ -507,8 +488,7 @@ def check_expiry_and_dates(text: str, fields: dict[str, Any], findings: list[Fin
 
 
 def check_required_fields(document_type: str, fields: dict[str, Any], findings: list[Finding]) -> None:
-    # These are only generic screening expectations. They must be configured to
-    # the actual application type and current regulatory checklist.
+   
     required_by_type = {
         "registration_certificate": ["dates", "reference_numbers"],
         "approval_letter": ["dates", "reference_numbers"],
@@ -563,7 +543,7 @@ def check_visual_quality(images: list[np.ndarray], findings: list[Finding]) -> N
     for page_num, arr in enumerate(images, start=1):
         if arr.size == 0:
             continue
-        # Simple image quality warnings only; not a manipulation detector.
+        
         gray = np.mean(arr[:, :, :3], axis=2)
         std = float(np.std(gray))
         if std < 22:
@@ -632,9 +612,6 @@ def check_text_presence(text: str, findings: list[Finding]) -> None:
         )
 
 
-# ---------------------------------------------------------------------------
-# Main analysis function
-# ---------------------------------------------------------------------------
 
 def analyze_document_bytes(
     data: bytes,
@@ -703,7 +680,7 @@ def analyze_document_bytes(
             recommendation="Confirm the document type during review.",
         )
 
-    # The service intentionally never labels a document as genuine or forged.
+    
     result = {
         "request_id": hashlib.sha256(
             f"{file_hash}:{time.time_ns()}".encode("utf-8")
@@ -730,13 +707,10 @@ def analyze_document_bytes(
     return result
 
 
-# ---------------------------------------------------------------------------
-# Authentication helper and API endpoints
-# ---------------------------------------------------------------------------
 
 def verify_token(provided_token: Optional[str]) -> None:
     if not API_TOKEN:
-        # Convenient for local development; set VERIFYAI_API_TOKEN before exposing.
+        
         return
     if not provided_token or provided_token != API_TOKEN:
         raise HTTPException(status_code=401, detail="Missing or invalid AI service token.")
@@ -793,9 +767,7 @@ def root() -> dict[str, str]:
     }
 
 
-# ---------------------------------------------------------------------------
-# Run directly: python verifyai_service.py
-# ---------------------------------------------------------------------------
+
 
 if __name__ == "__main__":
     import uvicorn
