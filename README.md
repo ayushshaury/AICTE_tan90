@@ -58,29 +58,29 @@ PostgreSQL Database       AiServiceClient Adapter
 - **Node.js:** v20+ (tested on Node v24)
 - **PostgreSQL:** Port 5432 running locally or in Docker
 
-### Step 1: Clone & Install Dependencies
+### Step 1: Install Dependencies
 ```bash
 # In SIH2 root directory:
 npm install
 
-# Install server packages:
-cd server && npm install
+# Install backend packages:
+cd backend && npm install
 
-# Install client packages:
-cd ../client && npm install
+# Install frontend packages:
+cd ../frontend && npm install
 ```
 
 ### Step 2: Environment Configuration
 Copy the sample environment files:
 ```bash
-# Server configuration:
-cp server/.env.example server/.env
+# Backend configuration:
+cp backend/.env.example backend/.env
 
-# Client configuration:
-cp client/.env.example client/.env
+# Frontend configuration:
+cp frontend/.env.example frontend/.env
 ```
 
-Default PostgreSQL connection in `server/.env`:
+Default PostgreSQL connection in `backend/.env`:
 ```dotenv
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/aicte_verifyai
 PORT=4000
@@ -93,24 +93,48 @@ MAX_UPLOAD_MB=20
 
 ### Step 3: Run Database Migrations & Seed
 ```bash
-cd server
-npx prisma db push
-npx prisma db seed
-```
-
-### Step 3: Run Database Migrations & Seed
-```bash
-cd server
+cd backend
 npx prisma db push
 npx prisma db seed
 ```
 
 This provisions all PostgreSQL tables and seeds 6 realistic synthetic institutions, 6 applications across different stages, documents, findings, and demo personas.
 
-### Step 4: Setup & Run Python AI Microservice (`ai-service/`)
+### Step 4: Run Application (Development or Production)
+
+#### Option A: Quick Concurrent Development Run (From Root)
+```powershell
+# Starts both Backend (Port 4000) and Frontend (Port 5173) simultaneously:
+npm run dev
+```
+
+Or run individually:
+```powershell
+# Terminal 1: Backend Express Gateway (Port 4000)
+npm run dev:backend
+
+# Terminal 2: Frontend Vite Workspace (Port 5173)
+npm run dev:frontend
+```
+
+#### Option B: Production Build & Run
+```powershell
+# Build both frontend and backend bundles:
+npm run build
+
+# Start the unified production server (serves API and compiled React SPA on port 4000):
+npm start
+```
+
+#### Option C: Production Docker Deployment
+```powershell
+docker-compose up --build
+```
+
+### Step 5: Optional Python AI Microservice (`backend/ai-service/`)
 The Python AI document scrutiny service (`verifyai_service.py`) runs as an internal microservice on port 8001:
 ```powershell
-cd ai-service
+cd backend/ai-service
 
 # Create virtual environment and activate:
 python -m venv .venv
@@ -126,19 +150,6 @@ python -m uvicorn verifyai_service:app --host 127.0.0.1 --port 8001
 Verify service health:
 ```powershell
 Invoke-RestMethod -Uri "http://127.0.0.1:8001/api/v1/health" | ConvertTo-Json
-```
-
-### Step 5: Run Express Backend & Vite Frontend
-In separate PowerShell terminals:
-
-```powershell
-# Terminal 1: Express Backend Gateway (Port 4000)
-cd server
-npm run dev
-
-# Terminal 2: React Frontend Workspace (Port 5173)
-cd client
-npm run dev
 ```
 
 ---
@@ -192,7 +203,7 @@ The Express gateway validates requests, streams the secure file to `verifyai_ser
 
 Run the full automated test suite:
 ```powershell
-cd server
+cd backend
 npm test
 ```
 
