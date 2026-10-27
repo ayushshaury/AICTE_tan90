@@ -97,9 +97,16 @@ app.use('/api/v1/reports', reportsRouter);
 app.use('/api/v1/audit', auditRouter);
 
 // 8. Serve Frontend Static Assets (Production Ready)
-const frontendDistPath = path.resolve(process.cwd(), '../frontend/dist');
-const altFrontendDist = path.resolve(__dirname, '../../frontend/dist');
-const activeDist = fs.existsSync(frontendDistPath) ? frontendDistPath : (fs.existsSync(altFrontendDist) ? altFrontendDist : null);
+const possibleDistPaths = [
+  process.env.FRONTEND_DIST,
+  path.resolve(process.cwd(), 'frontend/dist'),
+  path.resolve(process.cwd(), '../frontend/dist'),
+  path.resolve(__dirname, '../../frontend/dist'),
+  path.resolve(__dirname, '../frontend/dist'),
+  '/app/frontend/dist',
+].filter(Boolean) as string[];
+
+const activeDist = possibleDistPaths.find(p => fs.existsSync(p)) || null;
 
 if (activeDist) {
   app.use(express.static(activeDist));

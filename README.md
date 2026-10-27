@@ -117,13 +117,29 @@ npm run dev:backend
 npm run dev:frontend
 ```
 
-#### Option B: Production Build & Run
+#### Option B: Production Build & Run (Native Node)
 ```powershell
 # Build both frontend and backend bundles:
 npm run build
 
 # Start the unified production server (serves API and compiled React SPA on port 4000):
 npm start
+```
+
+#### Option C: Deploy Whole Application with Docker
+You can deploy the whole application (frontend + backend) with a single Dockerfile:
+
+```powershell
+# 1. Build the unified container:
+docker build -t aicte-portal .
+
+# 2. Run container (serves both API and React SPA on port 4000):
+docker run -p 4000:4000 -e DATABASE_URL="postgresql://user:pass@host:5432/aicte_verifyai" aicte-portal
+```
+
+Or deploy the entire stack with PostgreSQL using Docker Compose:
+```powershell
+docker compose up --build
 ```
 
 
