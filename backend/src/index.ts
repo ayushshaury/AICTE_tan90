@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import path from 'path';
+import fs from 'fs';
 import rateLimit from 'express-rate-limit';
 
 import { prisma } from './utils/db.js';
@@ -94,7 +96,20 @@ app.use('/api/v1/notifications', notificationsRouter);
 app.use('/api/v1/reports', reportsRouter);
 app.use('/api/v1/audit', auditRouter);
 
-// 8. 404 Handler for unknown API routes
+// 8. Serve Frontend Static Assets (Production Ready)
+const frontendDistPath = path.resolve(process.cwd(), '../frontend/dist');
+const altFrontendDist = path.resolve(__dirname, '../../frontend/dist');
+const activeDist = fs.existsSync(frontendDistPath) ? frontendDistPath : (fs.existsSync(altFrontendDist) ? altFrontendDist : null);
+
+if (activeDist) {
+  app.use(express.static(activeDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api')) return next();
+    res.sendFile(path.join(activeDist, 'index.html'));
+  });
+}
+
+// 9. 404 Handler for unknown API routes
 app.use('/api/*', (_req, res) => {
   res.status(404).json({
     error: {
