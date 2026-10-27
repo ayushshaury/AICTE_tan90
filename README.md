@@ -126,10 +126,6 @@ npm run build
 npm start
 ```
 
-#### Option C: Production Docker Deployment
-```powershell
-docker-compose up --build
-```
 
 ### Step 5: Optional Python AI Microservice (`backend/ai-service/`)
 The Python AI document scrutiny service (`verifyai_service.py`) runs as an internal microservice on port 8001:
