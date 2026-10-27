@@ -70,3 +70,71 @@ textarea:focus-visible {
   outline: 2px solid #E65100;
   outline-offset: 2px;
 }
+
+/* =========================================================================
+   Aesthetic Cyber Anomaly & Forensic Scanner Animations
+   ========================================================================= */
+@keyframes laser-sweep {
+  0% {
+    top: 0%;
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0.8;
+  }
+}
+
+@keyframes radar-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 20px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes anomaly-glow {
+  0%, 100% {
+    box-shadow: 0 0 25px rgba(239, 68, 68, 0.4), inset 0 0 15px rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(239, 68, 68, 0.8), inset 0 0 30px rgba(239, 68, 68, 0.4);
+    border-color: rgba(255, 99, 71, 1);
+  }
+}
+
+.animate-laser-sweep {
+  animation: laser-sweep 2.2s ease-in-out infinite alternate;
+}
+
+.animate-radar-spin {
+  animation: radar-spin 4s linear infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-anomaly-glow {
+  animation: anomaly-glow 1.8s ease-in-out infinite;
+}

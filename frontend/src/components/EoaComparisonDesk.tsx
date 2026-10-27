@@ -18,10 +18,12 @@ import {
   ShieldCheck,
   Download,
   Copy,
+  Zap,
 } from 'lucide-react';
 import type { ComparisonReport, VerificationItem, ClarificationRequest } from '../types';
 import { api } from '../services/api';
 import { Modal } from './Modal';
+import { AnomalyDetectionHUD, type AnomalyPayload } from './AnomalyDetectionHUD';
 
 interface EoaComparisonDeskProps {
   applicationId: string;
@@ -70,6 +72,33 @@ export const EoaComparisonDesk: React.FC<EoaComparisonDeskProps> = ({
   const [selectedClarification, setSelectedClarification] = useState<ClarificationRequest | null>(null);
   const [responseNotes, setResponseNotes] = useState('');
   const [submittingResponse, setSubmittingResponse] = useState(false);
+
+  // Anomaly HUD State
+  const [anomalyHUDOpen, setAnomalyHUDOpen] = useState(false);
+  const [selectedAnomaly, setSelectedAnomaly] = useState<AnomalyPayload | null>(null);
+
+  const handleTriggerAnomalyHUD = (item: VerificationItem) => {
+    const isExpired = item.comparisonResult === 'EXPIRED';
+    const isMismatch = item.comparisonResult === 'CHANGED_VERIFY' || item.comparisonResult === 'INCONSISTENT';
+
+    const anomalyData: AnomalyPayload = {
+      title: item.warningReason || `Statutory Discrepancy Flagged: ${item.fieldRequirement}`,
+      category: item.category,
+      severity: isExpired || isMismatch ? 'CRITICAL' : 'HIGH',
+      ruleCode: isExpired ? 'RULE_DOC_EXPIRY_CHECK' : (isMismatch ? 'RULE_EOA_INTAKE_MISMATCH' : 'RULE_NAME_CONSISTENCY'),
+      documentTitle: item.document?.originalFilename || `${item.fieldName}.pdf`,
+      documentUrl: item.document?.id ? api.getDocumentFileUrl(item.document.id) : undefined,
+      expectedValue: item.previousEoaValue || 'Approved Baseline Norm',
+      extractedValue: item.currentApplicationValue || item.extractedValue || 'Discrepancy Detected',
+      discrepancyDelta: item.warningReason || 'Value modification deviates from approved baseline record',
+      recommendation: item.recommendedAction || 'Scrutiny officer audit required before granting extension of approval',
+      confidenceScore: (item.confidence ? item.confidence * 100 : 98.4),
+      boundingBox: item.boundingBoxJson,
+    };
+
+    setSelectedAnomaly(anomalyData);
+    setAnomalyHUDOpen(true);
+  };
 
   // Fetch Document as same-origin Blob URL whenever evidence modal opens
   useEffect(() => {
@@ -398,7 +427,21 @@ export const EoaComparisonDesk: React.FC<EoaComparisonDeskProps> = ({
             </p>
           </div>
 
-          <div className="flex items-center space-x-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {/* Live AI Anomaly Scanner Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedAnomaly(null);
+                setAnomalyHUDOpen(true);
+              }}
+              className="inline-flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white rounded-lg text-xs font-bold uppercase tracking-wider shadow-sm transition-all hover:scale-102 border border-red-400/40"
+              title="Launch AI Scrutiny & Anomaly Detection Simulator"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
+              <span>AI Anomaly Scanner & Specimen Hub</span>
+            </button>
+
             <button
               onClick={handleRecompute}
               disabled={recomputing || loading}
@@ -675,6 +718,20 @@ export const EoaComparisonDesk: React.FC<EoaComparisonDeskProps> = ({
                             >
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 group-hover:text-white" />
                               <span>Resolve Issue</span>
+                            </button>
+                          )}
+                          {item.comparisonResult !== 'CONSISTENT' && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTriggerAnomalyHUD(item);
+                              }}
+                              className="inline-flex items-center space-x-1 px-2.5 py-1.5 rounded bg-red-50 hover:bg-red-600 text-red-700 hover:text-white border border-red-300 font-bold transition-all text-[11px] shadow-2xs group"
+                              title="Launch AI Forensic Anomaly Scanner Animation"
+                            >
+                              <Zap className="w-3.5 h-3.5 text-red-600 group-hover:text-amber-200 animate-pulse" />
+                              <span>Scan Anomaly</span>
                             </button>
                           )}
                           <button
@@ -1385,6 +1442,13 @@ export const EoaComparisonDesk: React.FC<EoaComparisonDeskProps> = ({
           </div>
         </form>
       </Modal>
+
+      {/* Cyber Anomaly Detection HUD & Demo Hub */}
+      <AnomalyDetectionHUD
+        isOpen={anomalyHUDOpen}
+        onClose={() => setAnomalyHUDOpen(false)}
+        initialAnomaly={selectedAnomaly}
+      />
     </div>
   );
 };

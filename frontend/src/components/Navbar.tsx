@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, LogOut, UserCheck, CheckCircle2 } from 'lucide-react';
+import { Bell, LogOut, UserCheck, CheckCircle2, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { Link } from 'react-router-dom';
 import { api } from '../services/api';
 import { EmblemOfIndia } from './EmblemOfIndia';
 import { AicteEmblem } from './AicteEmblem';
+import { AnomalyDetectionHUD } from './AnomalyDetectionHUD';
 
 export const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
   const { isHindi } = useLanguage();
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [anomalyHubOpen, setAnomalyHubOpen] = useState<boolean>(false);
 
   useEffect(() => {
     if (user) {
@@ -116,7 +118,18 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Right Header Navigation */}
-          <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
+          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+            {/* Demo Specimen & Anomaly Scanner Button */}
+            <button
+              onClick={() => setAnomalyHubOpen(true)}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-gradient-to-r from-red-600 via-amber-600 to-red-600 hover:from-red-700 hover:to-amber-700 text-white rounded-lg text-xs font-bold uppercase tracking-wider shadow-sm transition-all hover:scale-102 border border-red-400/40"
+              title="Open AICTE Demo Certificates & Anomaly Scanner Hub"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
+              <span className="hidden sm:inline">Demo Files & Anomaly Scanner</span>
+              <span className="sm:hidden">Demo Hub</span>
+            </button>
+
             {/* Official Scrutiny Notifications */}
             <Link
               to="/notifications"
@@ -168,6 +181,12 @@ export const Navbar: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Cyber Anomaly Detection HUD & Demo Hub */}
+      <AnomalyDetectionHUD
+        isOpen={anomalyHubOpen}
+        onClose={() => setAnomalyHubOpen(false)}
+      />
     </header>
   );
 };
