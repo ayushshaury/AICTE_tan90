@@ -75,6 +75,13 @@ export interface VerifyAiAnalysisResponse {
   disclaimer: string;
 }
 
+export interface AiBoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 // Normalized UI-ready analysis result
 export interface AiExtractedField {
   field_name: string;
@@ -82,6 +89,7 @@ export interface AiExtractedField {
   confidence: number;
   page_number: number;
   evidence_text?: string;
+  bounding_box?: AiBoundingBox;
 }
 
 export interface AiAnomaly {

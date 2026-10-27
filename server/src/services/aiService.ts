@@ -92,8 +92,8 @@ export class AiServiceClient {
       if (!response.ok) {
         let errMessage = `HTTP status ${response.status}: ${response.statusText}`;
         try {
-          const errJson = await response.json();
-          errMessage = errJson.detail || JSON.stringify(errJson);
+          const errJson = (await response.json()) as any;
+          errMessage = errJson?.detail || JSON.stringify(errJson);
         } catch {
           // Body not json
         }
@@ -191,7 +191,7 @@ export class AiServiceClient {
     // 6. Map Findings from Python service to Anomalies
     if (raw.findings && raw.findings.length > 0) {
       raw.findings.forEach((f) => {
-        let mappedSeverity = Severity.MEDIUM;
+        let mappedSeverity: Severity = Severity.MEDIUM;
         const sevLower = (f.severity || '').toLowerCase();
         if (sevLower === 'high' || sevLower === 'critical') mappedSeverity = Severity.HIGH;
         else if (sevLower === 'low' || sevLower === 'info') mappedSeverity = Severity.LOW;

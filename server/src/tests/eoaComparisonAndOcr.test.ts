@@ -82,7 +82,7 @@ test('AICTE VerifyAI — Intelligent OCR, Officer Verification & Previous EoA Co
       request_id: 'test-scenario-2',
       application_id: 'mock-app-low-ocr',
       document_id: 'mock-doc-low-ocr',
-      document_category: DocumentCategory.LAND_DOCUMENTS,
+      document_category: DocumentCategory.NOC_LAND_USE,
       file_name: 'blurred_scanned_deed.pdf',
       content_sha256: 'lowconfidencehash999',
       file_reference: 'blurred_scanned_deed.pdf',

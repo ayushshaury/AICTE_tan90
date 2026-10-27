@@ -41,7 +41,7 @@ export interface ComparisonReport {
 /**
  * Find the previous EoA application for an institution
  */
-export async function findPreviousEoaApplication(currentApplication: any) {
+export async function findPreviousEoaApplication(currentApplication: any): Promise<any> {
   // 1. Explicit link on application record
   if (currentApplication.previousApplicationId) {
     const prev = await prisma.application.findUnique({
@@ -63,7 +63,6 @@ export async function findPreviousEoaApplication(currentApplication: any) {
       institutionId: currentApplication.institutionId,
       id: { not: currentApplication.id },
       category: { in: ['EOA', 'INTAKE_CHANGE'] },
-      deletedAt: undefined,
     },
     include: {
       documents: {
@@ -177,7 +176,7 @@ export async function comparePreviousEoa(
   }
 
   // 1. Find previous EoA
-  const previousApp = await findPreviousEoaApplication(currentApp);
+  const previousApp: any = await findPreviousEoaApplication(currentApp);
 
   // If previous EoA is unavailable
   if (!previousApp) {
