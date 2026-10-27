@@ -138,3 +138,37 @@ textarea:focus-visible {
 .animate-anomaly-glow {
   animation: anomaly-glow 1.8s ease-in-out infinite;
 }
+
+@keyframes verified-glow {
+  0%, 100% {
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.4), inset 0 0 15px rgba(16, 185, 129, 0.2);
+    border-color: rgba(16, 185, 129, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(16, 185, 129, 0.8), inset 0 0 30px rgba(16, 185, 129, 0.4);
+    border-color: rgba(52, 211, 153, 1);
+  }
+}
+
+@keyframes seal-pop {
+  0% {
+    transform: scale(0.6) rotate(-15deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08) rotate(3deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.animate-verified-glow {
+  animation: verified-glow 2s ease-in-out infinite;
+}
+
+.animate-seal-pop {
+  animation: seal-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
